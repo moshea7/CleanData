@@ -5,10 +5,9 @@
 .libPaths("C:/R-3.3.1/library")
 .libPaths() 
 install.packages("plyr", lib="C:/R-3.3.1/library")
-#install.packages("knitr", lib="C:/R-3.3.1/library")
 install.packages("memisc", lib="C:/R-3.3.1/library")
+
 library(plyr);
-#library(knitr)
 library(memisc)
 
 
@@ -23,63 +22,65 @@ download.file(fileUrl,destfile="./data/Dataset.zip")
 unzip(zipfile="./data/Dataset.zip",exdir="./data")
 
 #Create a path/folder "UCI HAR Dataset" for unzipped files
-path_rf <- file.path("./data" , "UCI HAR Dataset")
-files<-list.files(path_rf, recursive=TRUE)
+path <- file.path("./data" , "UCI HAR Dataset")
+files<-list.files(path, recursive=TRUE)
 files
 
 #Reading files and Creating  variables for the Activity files
-dataActivityTest  <- read.table(file.path(path_rf, "test" , "Y_test.txt" ),header = FALSE)
-dataActivityTrain <- read.table(file.path(path_rf, "train", "Y_train.txt"),header = FALSE)
+ActivityTest  <- read.table(file.path(path, "test" , "Y_test.txt" ),header = FALSE)
+ActivityTrain <- read.table(file.path(path, "train", "Y_train.txt"),header = FALSE)
 
 
 #Reading files and Creating  variables for the Subject files
-dataSubjectTrain <- read.table(file.path(path_rf, "train", "subject_train.txt"),header = FALSE)
-dataSubjectTest  <- read.table(file.path(path_rf, "test" , "subject_test.txt"),header = FALSE)
+SubjectTrain <- read.table(file.path(path, "train", "subject_train.txt"),header = FALSE)
+SubjectTest  <- read.table(file.path(path, "test" , "subject_test.txt"),header = FALSE)
 
 #Reading files and Creating  variables for the features files
-dataFeaturesTest  <- read.table(file.path(path_rf, "test" , "X_test.txt" ),header = FALSE)
-dataFeaturesTrain <- read.table(file.path(path_rf, "train", "X_train.txt"),header = FALSE)
+FeaturesTest  <- read.table(file.path(path, "test" , "X_test.txt" ),header = FALSE)
+FeaturesTrain <- read.table(file.path(path, "train", "X_train.txt"),header = FALSE)
 
-
-#Checking structure of variables
-str(dataActivityTest)
-str(dataActivityTrain)
-str(dataSubjectTrain)
-str(dataSubjectTest)
-str(dataFeaturesTest)
-str(dataFeaturesTrain)
-
-#class(dataActivityTest)
 
 #Concatenate tables by row
-dataSubject <- rbind(dataSubjectTrain, dataSubjectTest)
-dataActivity<- rbind(dataActivityTrain, dataActivityTest)
-dataFeatures<- rbind(dataFeaturesTrain, dataFeaturesTest)
+Subject <- rbind(SubjectTrain, SubjectTest)
+Activity<- rbind(ActivityTrain, ActivityTest)
+Features<- rbind(FeaturesTrain, FeaturesTest)
 
 #set variable names
-names(dataSubject)<-c("subject")
-names(dataActivity)<- c("activity")
-dataFeaturesNames <- read.table(file.path(path_rf, "features.txt"),head=FALSE)
-names(dataFeatures)<- dataFeaturesNames$V2
+names(Subject)<-c("subject")
+names(Activity)<- c("activity")
+FeaturesNames <- read.table(file.path(path, "features.txt"),head=FALSE)
+names(Features)<- FeaturesNames$V2
+
+###############################################################################
+##### 1. Merges the training and the test sets to create one data set. ########
+###############################################################################
 
 #Combine all get one dataframe
-dataCombine <- cbind(dataSubject, dataActivity)
-Data <- cbind(dataFeatures, dataCombine)
+Combine <- cbind(Subject, Activity)
+Data <- cbind(Features, Combine)
+
+########################################################################################################
+##### 2.Extracts only the measurements on the mean and standard deviation for each measurement. ########
+########################################################################################################
 
 #Subset Name of Features by measurements on the mean and standard deviation
-subdataFeaturesNames<-dataFeaturesNames$V2[grep("mean\\(\\)|std\\(\\)", dataFeaturesNames$V2)]
+subFeaturesNames<-FeaturesNames$V2[grep("mean\\(\\)|std\\(\\)", FeaturesNames$V2)]
 
 #Subset the data frame Data by seleted names of Features
-selectedNames<-c(as.character(subdataFeaturesNames), "subject", "activity" )
+selectedNames<-c(as.character(subFeaturesNames), "subject", "activity" )
 Data<-subset(Data,select=selectedNames)
 
-#structure of Data
-str(Data)
-###############################################################################################################
+#########################################################################################
+##### 3. Uses descriptive activity names to name the activities in the data set. ########
+#########################################################################################
 
 #Read descriptive activity names from "activity_labels.txt"
-activityLabels <- read.table(file.path(path_rf, "activity_labels.txt"),header = FALSE)
+activityLabels <- read.table(file.path(path, "activity_labels.txt"),header = FALSE)
 head(Data$activity,30)
+
+####################################################################################
+##### 4. Appropriately labels the data set with descriptive variable names. ########
+####################################################################################
 
 #t is replaced by time
 names(Data)<-gsub("^t", "time", names(Data))
@@ -94,17 +95,23 @@ names(Data)<-gsub("Mag", "Magnitude", names(Data))
 #BodyBody is replaced by Body
 names(Data)<-gsub("BodyBody", "Body", names(Data))
 
-names(Data)
+
+#########################################################################################################
+##### 5. From the data set in step 4, creates a second, independent tidy data set with the average ###### 
+############# of each variable for each activity and each subject. ######################################
+#########################################################################################################
+
 
 #create a new tidy dataset
-Data2<-aggregate(. ~subject + activity, Data, mean)
-Data2<-Data2[order(Data2$subject,Data2$activity),]
+tidyData<-aggregate(. ~subject + activity, Data, mean)
+tidyData<-tidyData[order(tidyData$subject,tidyData$activity),]
 
 #write tidy data set to new file
-write.table(Data2, file = "tidydata.txt",row.name=FALSE)
+write.table(tidyData, file = "tidydata.txt",row.name=FALSE)
 
 #Produce code book (Using memisc library)
-codebook<- codebook(Data2)
+codebook<- codebook(tidyData)
 
 #creating a textfile for the codebook
 capture.output(codebook, file="codebook.txt")
+
